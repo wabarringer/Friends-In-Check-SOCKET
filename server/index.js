@@ -15,30 +15,31 @@ const io = new Server(server, {
   },
 });
 
-// TODO: User joins a room from the home page
-// TODO: Game doesn't start until two players have entered room
-// TODO: Emit Move_Piece from front end and listen to emit on backend - then emit Push_Move on backend and listen to emit on frontend
-// TODO:
+// const io = require("socket.io")(server, {
+//   cors: {
+//     origin: "*",
+//   },
+// });
 
-// Listen to user connection
+// 1) Listen to user connection
 io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.id}`);
-  socket.on("join_room", (data) => {
-    socket.join(data);
+  console.log("New user connected");
+
+  // 2) Listen for host
+  socket.on("host", (roomId) => {
+    console.log(`User hosted room ${roomId}`);
+
+    // 2) Create new room
+    const room = io.of(`/${roomId}`);
   });
 
-  // listen to onPieceMoved function
-  // first argument is the identifier, so make sure to match to emit on frontend
-  socket.on("Move_Piece", (data) => {
-    console.log("Move recieved", data);
-    io.emit("Push_Move", data);
-  });
+  // 3) Listen for join
+  socket.on("join", ({ roomId, username }) => {
+    // Join the user
+    socket.join(roomId);
 
-  // CHAT
-  socket.on("send_message", (data) => {
-    // Connect socket to room and emit to everyone into that room
-    // The 'to' function specifies where you want to emit the event
-    socket.to(data.room).emit("received_message", data);
+    // 3) Broadcast to room
+    socket.to(roomId).emit("user-joined", { username });
   });
 });
 
