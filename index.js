@@ -52,14 +52,21 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("user-joined", username);
   });
 
-  // ALL EVENTS IN HERE ARE RUN INSIDE OF THE ROOM
+  // *ALL EVENTS IN HERE ARE RAN INSIDE OF THE ROOM*
   socket.on("in-room", (roomId) => {
     socket.join(roomId);
     socket.to(roomId).emit("user array", rooms[roomId].users);
 
+    // For chat
     socket.on("send-message", ({ username, message }) => {
       let newMsg = `${username}: ${message}`;
       socket.to(roomId).emit("return-message", newMsg);
+    });
+
+    // For chess
+    socket.on("move", (move) => {
+      console.log("Move recieved");
+      socket.to(roomId).emit("return-move", move);
     });
   });
 });
