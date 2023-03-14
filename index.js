@@ -10,65 +10,61 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    // origin: "http://localhost:3000",
-    origin: "https://friends-in-check.netlify.app/",
+    origin: "http://localhost:3000",
     methods: ["GET", "POST"],
   },
 });
 
-// const io = require("socket.io")(server, {
-//   cors: {
-//     origin: "*",
-//   },
-// });
+// room registry
+const rooms = {};
 
-let rooms = {};
-// 1) Listen to user connection
+// Listen to user connection
 io.on("connection", (socket) => {
-  console.log("New user connected");
+  console.log(`User connected: ${socket.id}`);
 
-  // 2) Listen for host
-  socket.on("host", (roomId) => {
-    console.log(`User hosted room ${roomId}`);
-    // 2) Create new room
-    const room = io.of(`/${roomId}`);
+  socket.on("resetGame", (data) => {
+    var room = rooms[data.roomId];
+    console.log("received resetGame message",data,room)
+    io.emit("broadcastResetGame", room);
   });
 
-  // 3) Listen for join
-  // Join event here is run when the user navigates to that page.
-  socket.on("join", ({ roomId, username }) => {
-    // Join the user
-    socket.join(roomId);
-    // Create an array of users with the KEY of the room id. Ex; { 14: { users: [] } } if it does not exist
-    console.log(`user joined ${roomId} username ${username}`);
-    if (!rooms[roomId]) {
-      rooms[roomId] = { users: [] };
+  socket.on("join_room", (data) => {
+    socket.join(data);
+    var room = rooms[data.roomId];
+    if (!room) {
+      rooms[data.roomId] = {
+        roomId : data.roomId,
+        host : data.playerId,
+        hostColor : "W",
+      };
+      room = rooms[data.roomId];
+      console.log(`room ${data.roomId} created by playerId ${data.playerId}`,room)
+    } else {
+      if (room.guest == data.playerId || room.host == data.playerId) {
+        console.log(`player ${data.playerId} already joined the room before`)
+      } 
+      else if (!room.guest) {
+        room.guest = data.playerId;
+        room.guestColor = "B";
+        console.log(`room ${data.roomId} joined by guest playerId ${data.playerId}`,room)
+      }
     }
-
-    // Push current users to array of users for that room key.
-    rooms[roomId].users.push(username);
-    console.log(`Current users joined ${roomId} are ${rooms[roomId].users}`);
-
-    // emit to users in room
-    socket.to(roomId).emit("user-joined", username);
+    io.emit("broadcastRoom", room);
+    console.log("bradcast join room updates")
   });
 
-  // *ALL EVENTS IN HERE ARE RAN INSIDE OF THE ROOM*
-  socket.on("in-room", (roomId) => {
-    socket.join(roomId);
-    socket.to(roomId).emit("user array", rooms[roomId].users);
+  // listen to onPieceMoved function
+  // first argument is the identifier, so make sure to match to emit on frontend
+  socket.on("message", (data) => {
+    console.log("Move recieved", data);
+    io.emit("broadcastMove", data);
+  });
 
-    // For chat
-    socket.on("send-message", ({ username, message }) => {
-      let newMsg = `${username}: ${message}`;
-      socket.to(roomId).emit("return-message", newMsg);
-    });
-
-    // For chess
-    socket.on("move", (move) => {
-      console.log("Move recieved");
-      socket.to(roomId).emit("return-move", move);
-    });
+  // CHAT
+  socket.on("send_message", (data) => {
+    // Connect socket to room and emit to everyone into that room
+    // The 'to' function specifies where you want to emit the event
+    socket.to(data.room).emit("received_message", data);
   });
 });
 
