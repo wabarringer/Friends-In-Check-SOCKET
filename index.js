@@ -10,8 +10,8 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    // origin: "http://localhost:3000",
-    origin: "https://friends-in-check.netlify.app",
+    // origin: "https://friends-in-check.netlify.app",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
@@ -31,6 +31,7 @@ io.on("connection", (socket) => {
 
   socket.on("join_room", (data) => {
     socket.join(data);
+
     var room = rooms[data.roomId];
     if (!room) {
       rooms[data.roomId] = {
