@@ -10,8 +10,8 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    // origin: "http://localhost:3000",
-    origin: "https://friends-in-check.netlify.app",
+    // origin: "https://friends-in-check.netlify.app",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
@@ -25,33 +25,39 @@ io.on("connection", (socket) => {
 
   socket.on("resetGame", (data) => {
     var room = rooms[data.roomId];
-    console.log("received resetGame message",data,room)
+    console.log("received resetGame message", data, room);
     io.emit("broadcastResetGame", room);
   });
 
   socket.on("join_room", (data) => {
     socket.join(data);
+
     var room = rooms[data.roomId];
     if (!room) {
       rooms[data.roomId] = {
-        roomId : data.roomId,
-        host : data.playerId,
-        hostColor : "W",
+        roomId: data.roomId,
+        host: data.playerId,
+        hostColor: "W",
       };
       room = rooms[data.roomId];
-      console.log(`room ${data.roomId} created by playerId ${data.playerId}`,room)
+      console.log(
+        `room ${data.roomId} created by playerId ${data.playerId}`,
+        room
+      );
     } else {
       if (room.guest == data.playerId || room.host == data.playerId) {
-        console.log(`player ${data.playerId} already joined the room before`)
-      } 
-      else if (!room.guest) {
+        console.log(`player ${data.playerId} already joined the room before`);
+      } else if (!room.guest) {
         room.guest = data.playerId;
         room.guestColor = "B";
-        console.log(`room ${data.roomId} joined by guest playerId ${data.playerId}`,room)
+        console.log(
+          `room ${data.roomId} joined by guest playerId ${data.playerId}`,
+          room
+        );
       }
     }
     io.emit("broadcastRoom", room);
-    console.log("bradcast join room updates")
+    console.log("bradcast join room updates");
   });
 
   // listen to onPieceMoved function
@@ -63,9 +69,10 @@ io.on("connection", (socket) => {
 
   // CHAT
   socket.on("send_message", (data) => {
-    // Connect socket to room and emit to everyone into that room
-    // The 'to' function specifies where you want to emit the event
-    socket.to(data.room).emit("received_message", data);
+    io.to(data.room).emit(
+      "received_message",
+      `${data.username}: ${data.message}`
+    );
   });
 });
 
